@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Project } from '../types';
-import { Plus, Download, Upload, Search, ChevronRight, FileText, Trash2, Archive, RefreshCcw, Tag, Filter } from 'lucide-react';
+import { Plus, Download, Upload, Search, ChevronRight, FileText, Trash2, Archive, RefreshCcw, Tag, Filter, Share } from 'lucide-react';
 
 interface DashboardProps {
   projects: Project[];
@@ -11,6 +11,7 @@ interface DashboardProps {
   onDeleteProject: (id: string) => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onExport: () => void;
+  onExportSingle: (project: Project) => void; // New prop
   onUpdateProject: (project: Project) => void;
 }
 
@@ -22,6 +23,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDeleteProject,
   onImport,
   onExport,
+  onExportSingle,
   onUpdateProject
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,7 +99,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <Download size={18} />
             <input type="file" className="hidden" accept=".json" onChange={onImport} />
           </label>
-          <button onClick={onExport} className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors" title="匯出 JSON (Upload Icon)">
+          <button onClick={onExport} className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors" title="備份全部專案 (Upload Icon)">
             <Upload size={18} />
           </button>
           <button 
@@ -267,6 +269,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                     {/* Action */}
                     <div className="flex items-center gap-2 pl-4 border-l border-zinc-800/50">
+                       <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onExportSingle(project);
+                        }}
+                        className="p-2 text-zinc-600 hover:text-teal-400 hover:bg-zinc-800 rounded-full transition-colors"
+                        title="匯出單一專案 JSON"
+                      >
+                        <Share size={18} />
+                      </button>
                        <button 
                         onClick={(e) => toggleArchive(e, project)}
                         className="p-2 text-zinc-600 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"

@@ -17,6 +17,9 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onUpdate,
   const [activeTab, setActiveTab] = useState<ProjectTab>('quote');
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   
+  // Local state for the new type input field in edit mode
+  const [newLocalType, setNewLocalType] = useState('');
+  
   const [editForm, setEditForm] = useState({
     name: project.name,
     client: project.client,
@@ -46,7 +49,17 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onUpdate,
         projectTypes: [...prev.projectTypes, value]
       }));
     }
-    // Reset select to default/placeholder if needed, but select value is controlled below
+  };
+
+  const addManualProjectType = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newLocalType && !editForm.projectTypes.includes(newLocalType)) {
+      setEditForm(prev => ({
+        ...prev,
+        projectTypes: [...prev.projectTypes, newLocalType]
+      }));
+      setNewLocalType('');
+    }
   };
 
   const removeProjectType = (typeToRemove: string) => {
@@ -110,35 +123,61 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, onUpdate,
                 />
               </div>
               
-              {/* Multi-Select Project Types */}
+              {/* Multi-Select Project Types with Manual Input */}
               <div className="col-span-2">
-                <label className="block text-xs text-zinc-500 mb-1">案件類型 (可複選)</label>
-                <div className="flex flex-wrap gap-2 p-2 bg-zinc-900 border border-zinc-700 rounded min-h-[38px]">
-                  {editForm.projectTypes.map(type => (
-                    <span key={type} className="bg-zinc-800 text-zinc-200 text-xs px-2 py-1 rounded flex items-center gap-1">
-                      {type}
-                      <button 
-                        onClick={() => removeProjectType(type)}
-                        className="text-zinc-500 hover:text-red-400"
+                <label className="block text-xs text-zinc-500 mb-1">案件類型 (選擇或手動輸入)</label>
+                <div className="flex flex-col gap-2">
+                   <div className="flex flex-wrap gap-2 p-2 bg-zinc-900 border border-zinc-700 rounded min-h-[38px]">
+                    {editForm.projectTypes.map(type => (
+                      <span key={type} className="bg-zinc-800 text-zinc-200 text-xs px-2 py-1 rounded flex items-center gap-1">
+                        {type}
+                        <button 
+                          onClick={() => removeProjectType(type)}
+                          className="text-zinc-500 hover:text-red-400"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                    
+                    <div className="relative">
+                      <select 
+                        className="bg-transparent text-teal-400 text-xs focus:outline-none cursor-pointer pr-4 appearance-none hover:text-teal-300 border-none outline-none"
+                        onChange={addProjectType}
+                        value=""
                       >
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))}
+                        <option value="" disabled>+ 從設定中選擇</option>
+                        {settings.projectTypes.map(type => (
+                          <option key={type} value={type} disabled={editForm.projectTypes.includes(type)}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                   
-                  <div className="relative">
-                     <select 
-                      className="bg-transparent text-teal-400 text-xs focus:outline-none cursor-pointer pr-4 appearance-none hover:text-teal-300"
-                      onChange={addProjectType}
-                      value=""
+                  {/* Manual Input Row */}
+                  <div className="flex gap-2">
+                    <input 
+                      type="text"
+                      className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-white"
+                      placeholder="手動輸入類型..."
+                      value={newLocalType}
+                      onChange={(e) => setNewLocalType(e.target.value)}
+                      onKeyDown={(e) => {
+                         if (e.key === 'Enter') {
+                           e.preventDefault();
+                           addManualProjectType(e);
+                         }
+                      }}
+                    />
+                    <button 
+                      onClick={addManualProjectType} 
+                      type="button"
+                      className="text-xs bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-zinc-300"
                     >
-                      <option value="" disabled>+ 新增標籤</option>
-                      {settings.projectTypes.map(type => (
-                        <option key={type} value={type} disabled={editForm.projectTypes.includes(type)}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
+                      新增
+                    </button>
                   </div>
                 </div>
               </div>

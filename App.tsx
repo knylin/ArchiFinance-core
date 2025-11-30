@@ -104,16 +104,45 @@ const App: React.FC = () => {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
+        
+        // Scenario 1: Array (Full Backup)
         if (Array.isArray(json)) {
-          setProjects(json);
-          alert('匯入成功！資料已更新。');
-          updateChangesState(false); // Reset dirty state after import
-          setShowStartupDialog(false); // Close startup dialog if open
+          if (confirm(`偵測到完整備份檔案 (${json.length} 個專案)。\n\n確定要「覆蓋」目前的資料嗎？\n此動作將會清除目前的專案列表。`)) {
+             setProjects(json);
+             alert('匯入成功！系統資料已還原。');
+             updateChangesState(false);
+             setShowStartupDialog(false);
+          }
+        } 
+        // Scenario 2: Object (Single Project)
+        else if (json && json.id && json.name) {
+          const newProject = json as Project;
+          
+          // Check if project exists
+          const existingIndex = projects.findIndex(p => p.id === newProject.id);
+          
+          if (existingIndex >= 0) {
+             if (confirm(`專案「${newProject.name}」已存在。\n\n要更新此專案的資料嗎？\n其他專案將不會受到影響。`)) {
+               const newProjects = [...projects];
+               newProjects[existingIndex] = newProject;
+               setProjects(newProjects);
+               alert(`專案「${newProject.name}」已更新。`);
+               updateChangesState(true); // Marked as dirty because we modified the list locally
+               setShowStartupDialog(false);
+             }
+          } else {
+             // Add as new
+             setProjects(prev => [newProject, ...prev]);
+             alert(`已新增專案：「${newProject.name}」`);
+             updateChangesState(true);
+             setShowStartupDialog(false);
+          }
         } else {
-          alert('無效的 JSON 結構');
+          alert('無效的 JSON 格式。請確認檔案是 ArchiFinance 的備份檔。');
         }
       } catch (err) {
-        alert('JSON 解析失敗');
+        console.error(err);
+        alert('JSON 解析失敗，檔案可能已損毀。');
       }
     };
     reader.readAsText(file);
@@ -121,21 +150,8 @@ const App: React.FC = () => {
     e.target.value = '';
   };
 
-  const handleExport = async () => {
-    // Feature 1: Auto-numbered filename based on date/time
-    const now = new Date();
-    // Format: YYYYMMDD_HHmmss
-    const timestamp = now.getFullYear().toString() +
-      (now.getMonth() + 1).toString().padStart(2, '0') +
-      now.getDate().toString().padStart(2, '0') + '_' +
-      now.getHours().toString().padStart(2, '0') +
-      now.getMinutes().toString().padStart(2, '0') +
-      now.getSeconds().toString().padStart(2, '0');
-
-    const filename = `ArchiFinance_Backup_${timestamp}.json`;
-    const jsonString = JSON.stringify(projects, null, 2);
-
-    try {
+  const saveFile = async (filename: string, content: string) => {
+     try {
       // Check for File System Access API support (Chrome, Edge, Opera)
       if ('showSaveFilePicker' in window) {
         // @ts-ignore - TypeScript might not know about this API yet
@@ -149,10 +165,10 @@ const App: React.FC = () => {
         
         // Create a writable stream to the file
         const writable = await handle.createWritable();
-        await writable.write(jsonString);
+        await writable.write(content);
         await writable.close();
         
-        alert('備份已成功儲存至指定路徑！');
+        alert('檔案已成功儲存至指定路徑！');
       } else {
         // Fallback for browsers not supporting the API (Firefox, Safari)
         throw new Error('Not supported');
@@ -162,7 +178,7 @@ const App: React.FC = () => {
       if (err.name === 'AbortError') return;
 
       // Use traditional download method as fallback
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(content);
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute("href", dataStr);
       downloadAnchorNode.setAttribute("download", filename);
@@ -170,8 +186,39 @@ const App: React.FC = () => {
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
     }
+  };
 
+  const handleExport = async () => {
+    // Feature 1: Auto-numbered filename based on date/time
+    const now = new Date();
+    // Format: YYYYMMDD_HHmmss
+    const timestamp = now.getFullYear().toString() +
+      (now.getMonth() + 1).toString().padStart(2, '0') +
+      now.getDate().toString().padStart(2, '0') + '_' +
+      now.getHours().toString().padStart(2, '0') +
+      now.getMinutes().toString().padStart(2, '0') +
+      now.getSeconds().toString().padStart(2, '0');
+
+    const filename = `ArchiFinance_FullBackup_${timestamp}.json`;
+    const jsonString = JSON.stringify(projects, null, 2);
+
+    await saveFile(filename, jsonString);
     updateChangesState(false); // Reset dirty state after export
+  };
+
+  const handleExportSingleProject = async (project: Project) => {
+    const now = new Date();
+    const timestamp = now.getFullYear().toString() +
+      (now.getMonth() + 1).toString().padStart(2, '0') +
+      now.getDate().toString().padStart(2, '0');
+    
+    // Sanitize filename
+    const safeName = project.name.replace(/[^a-z0-9\u4e00-\u9fa5]/gi, '_');
+    const filename = `${safeName}_${timestamp}.json`;
+    const jsonString = JSON.stringify(project, null, 2);
+
+    await saveFile(filename, jsonString);
+    // Note: Exporting a single project does NOT clear the dirty state for the whole app
   };
 
   const activeProject = projects.find(p => p.id === selectedProjectId);
@@ -248,6 +295,7 @@ const App: React.FC = () => {
           onDeleteProject={handleDeleteProject}
           onImport={handleImport}
           onExport={handleExport}
+          onExportSingle={handleExportSingleProject}
           onUpdateProject={handleUpdateProject}
         />
       )}
