@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { LayoutDashboard, Settings, PieChart } from 'lucide-react';
+import { LayoutDashboard, Settings, PieChart, Landmark } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface LayoutProps {
@@ -36,6 +37,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activeView
           <div className="pt-4 pb-2 px-3 hidden md:block text-xs font-semibold text-zinc-600 uppercase tracking-wider">
             系統功能
           </div>
+
+          <button 
+            onClick={() => onNavigate('finance')}
+            className={`flex items-center gap-3 w-full p-3 rounded-lg transition-colors ${
+              activeView === 'finance'
+                ? 'bg-zinc-800 text-teal-400'
+                : 'hover:bg-zinc-800/50 text-zinc-400'
+            }`}
+          >
+            <Landmark size={20} />
+            <span className="hidden md:block font-medium">財務管理 (公基金)</span>
+          </button>
           
           <button 
             onClick={() => onNavigate('reports')}
@@ -62,7 +75,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activeView
         </nav>
         
         <div className="p-4 border-t border-zinc-800 text-xs text-zinc-600 hidden md:block">
-          v1.2.0 • 本地儲存
+          v1.3.0 • 本地儲存
         </div>
       </aside>
 

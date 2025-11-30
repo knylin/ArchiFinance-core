@@ -1,7 +1,8 @@
 
-import { Project, AppSettings } from '../types';
+import { Project, AppSettings, GeneralTransaction } from '../types';
 
 const STORAGE_KEY = 'archifinance_projects_v1';
+const GENERAL_FUND_KEY = 'archifinance_general_fund_v1';
 const NOTES_LIB_KEY = 'archifinance_notes_library_v1';
 const SETTINGS_KEY = 'archifinance_settings_v1';
 
@@ -28,6 +29,26 @@ export const loadProjects = (): Project[] => {
     });
   } catch (e) {
     console.error('Failed to load projects', e);
+    return [];
+  }
+};
+
+// --- General Fund Functions (New in v1.3.0) ---
+
+export const saveGeneralTransactions = (transactions: GeneralTransaction[]) => {
+  try {
+    localStorage.setItem(GENERAL_FUND_KEY, JSON.stringify(transactions));
+  } catch (e) {
+    console.error('Failed to save general transactions', e);
+  }
+};
+
+export const loadGeneralTransactions = (): GeneralTransaction[] => {
+  try {
+    const data = localStorage.getItem(GENERAL_FUND_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.error('Failed to load general transactions', e);
     return [];
   }
 };

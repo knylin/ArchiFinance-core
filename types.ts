@@ -71,6 +71,18 @@ export interface Project {
   costs: Cost[];
 }
 
+// --- General Fund Types (New in v1.3.0) ---
+
+export interface GeneralTransaction {
+  id: string;
+  date: string;
+  type: 'income' | 'expense';
+  category: 'OfficeRent' | 'Utilities' | 'Salary' | 'Software' | 'Marketing' | 'Tax' | 'Equipment' | 'Misc' | 'Capital';
+  description: string;
+  amount: number;
+  note?: string;
+}
+
 // --- Settings Types ---
 
 export interface BankAccount {
@@ -97,7 +109,7 @@ export interface AppSettings {
   projectTypes: string[]; // List of available project types
 }
 
-export type ViewState = 'dashboard' | 'project-detail' | 'reports' | 'settings';
+export type ViewState = 'dashboard' | 'finance' | 'project-detail' | 'reports' | 'settings';
 export type ProjectTab = 'overview' | 'quote' | 'invoice' | 'costs';
 
 // --- Chat / AI Types ---

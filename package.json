@@ -1,3 +1,4 @@
+
 {
   "name": "archifinance-core",
   "private": true,
@@ -44,6 +45,7 @@
       "electron/**/*"
     ],
     "win": {
+      "forceCodeSigning": false,
       "target": [
         {
           "target": "nsis",
