@@ -1,0 +1,5 @@
+{
+  "name": "ArchiFinance Core",
+  "description": "專為建築師事務所設計的專案財務管理系統，具備報價單生成、分期請款管理與成本追蹤功能，資料皆儲存於本地端。",
+  "requestFramePermissions": []
+}
