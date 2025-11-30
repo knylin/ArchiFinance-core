@@ -759,8 +759,9 @@ export const QuoteEditor: React.FC<QuoteEditorProps> = ({ project, onUpdate, set
             </div>
 
             {/* Totals Section */}
-            <div className="flex justify-end mb-4 break-inside-avoid">
-               <div className="w-80">
+            <div className="grid grid-cols-2 gap-12 mb-4 break-inside-avoid">
+               <div></div>
+               <div>
                  {/* 1. Subtotal Line (Always Base Sum) */}
                  <div className="flex justify-between py-2 border-t border-black text-xs font-bold text-gray-700 uppercase tracking-wider font-sans">
                    <span>項目合計</span>

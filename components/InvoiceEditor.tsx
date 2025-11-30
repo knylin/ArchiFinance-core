@@ -286,10 +286,14 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ project, onUpdate,
               </table>
             </div>
 
-            {/* Totals Section - Matching Quote Style */}
-            <div className="flex justify-end mb-4 break-inside-avoid">
-               <div className="w-96">
-                 <div className="flex justify-between py-2 border-t border-black text-xs font-bold text-gray-700 uppercase tracking-wider font-sans">
+            {/* Totals Section - Matching Quote Style - Grid Layout */}
+            <div className="grid grid-cols-2 gap-12 mb-4 break-inside-avoid">
+               {/* Empty Left Column to align with footer left column */}
+               <div></div>
+
+               {/* Right Column: Totals */}
+               <div>
+                 <div className="flex justify-between py-2 border-t border-black text-sm font-bold text-gray-700 uppercase tracking-wider font-sans">
                    <span>項目合計</span>
                    <span className="font-mono">${(draft.totalService + draft.totalExpense).toLocaleString()}</span>
                  </div>
@@ -380,6 +384,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ project, onUpdate,
              </div>
           </div>
           
+        </div>
         </A4Paper>
       </div>
     </div>
