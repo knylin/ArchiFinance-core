@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Project, Invoice, InvoiceItem, AppSettings, BankAccount } from '../types';
-import { Plus, Trash2, Printer, Save, History } from 'lucide-react';
+import { Plus, Trash2, Printer, Save, History, Edit2, Check, X } from 'lucide-react';
 import { A4Paper } from './A4Paper';
 
 interface InvoiceEditorProps {
@@ -24,6 +24,10 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ project, onUpdate,
     totalExpense: 0,
     taxAmount: 0
   });
+
+  // --- History Edit State ---
+  const [editingInvId, setEditingInvId] = useState<string | null>(null);
+  const [editInvData, setEditInvData] = useState<{date: string, invoiceNo: string} | null>(null);
 
   // --- Actions ---
   const handleTermSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -91,6 +95,37 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ project, onUpdate,
     alert('單據已儲存！');
   };
 
+  // --- History Edit Handlers ---
+  const startEditHistory = (inv: Invoice) => {
+    setEditingInvId(inv.id);
+    setEditInvData({ date: inv.date, invoiceNo: inv.invoiceNo });
+  };
+
+  const saveEditHistory = () => {
+    if (!editInvData) return;
+    const updatedInvoices = invoices.map(inv => 
+      inv.id === editingInvId 
+        ? { ...inv, date: editInvData.date, invoiceNo: editInvData.invoiceNo }
+        : inv
+    );
+    onUpdate({ ...project, invoices: updatedInvoices });
+    setEditingInvId(null);
+    setEditInvData(null);
+  };
+
+  const cancelEditHistory = () => {
+    setEditingInvId(null);
+    setEditInvData(null);
+  };
+  
+  const deleteInvoice = (id: string) => {
+    if (confirm('確定要刪除此請款紀錄？')) {
+      const updatedInvoices = invoices.filter(inv => inv.id !== id);
+      onUpdate({ ...project, invoices: updatedInvoices });
+    }
+  };
+
+
   const previousBilled = invoices.reduce((sum, inv) => sum + inv.totalService, 0);
   const remainingContract = contractTotal - previousBilled - draft.totalService;
 
@@ -116,7 +151,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ project, onUpdate,
 
         <div className="space-y-6">
           <div className="bg-zinc-900/50 p-4 rounded-lg border border-zinc-800">
-            <label className="block text-xs text-zinc-500 uppercase tracking-wider mb-2 font-sans">單據資訊</label>
+            <label className="block text-xs text-zinc-500 uppercase tracking-wider mb-2 font-sans">單據資訊 (收入日期)</label>
             <div className="grid grid-cols-2 gap-4">
               <input 
                 className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-300 font-mono"
@@ -126,7 +161,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ project, onUpdate,
               />
               <input 
                 type="date"
-                className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-300 font-sans"
+                className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-300 font-sans cursor-pointer"
                 value={draft.date}
                 onChange={e => updateDraft({...draft, date: e.target.value})}
               />
@@ -193,13 +228,43 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ project, onUpdate,
           <h3 className="text-zinc-400 font-medium mb-4 flex items-center gap-2 font-sans"><History size={16}/> 請款紀錄</h3>
           <div className="space-y-2">
             {invoices.map(inv => (
-               <div key={inv.id} className="flex justify-between items-center p-3 bg-zinc-900 rounded border border-zinc-800 text-sm">
-                 <div>
-                   <div className="text-white font-mono">{inv.invoiceNo}</div>
-                   <div className="text-zinc-500 text-xs font-sans">{inv.date}</div>
-                 </div>
-                 <div className="text-right">
+               <div key={inv.id} className="flex justify-between items-center p-3 bg-zinc-900 rounded border border-zinc-800 text-sm group">
+                 {editingInvId === inv.id && editInvData ? (
+                   <div className="flex gap-2 items-center flex-1">
+                     <input 
+                       className="w-24 bg-zinc-950 border border-zinc-700 rounded px-1 py-0.5 font-mono text-xs text-white"
+                       value={editInvData.invoiceNo}
+                       onChange={e => setEditInvData({...editInvData, invoiceNo: e.target.value})}
+                     />
+                     <input 
+                       type="date"
+                       className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-1 py-0.5 font-sans text-xs text-white"
+                       value={editInvData.date}
+                       onChange={e => setEditInvData({...editInvData, date: e.target.value})}
+                     />
+                   </div>
+                 ) : (
+                   <div>
+                     <div className="text-white font-mono">{inv.invoiceNo}</div>
+                     <div className="text-zinc-500 text-xs font-sans">{inv.date}</div>
+                   </div>
+                 )}
+
+                 <div className="text-right flex items-center gap-3">
                    <div className="text-zinc-300 font-mono">${(inv.totalService + inv.totalExpense + inv.taxAmount).toLocaleString()}</div>
+                   
+                   {/* Actions */}
+                   {editingInvId === inv.id ? (
+                      <div className="flex gap-1">
+                        <button onClick={saveEditHistory} className="text-teal-400 hover:text-teal-300 p-1 bg-teal-900/30 rounded"><Check size={14}/></button>
+                        <button onClick={cancelEditHistory} className="text-zinc-500 hover:text-zinc-300 p-1 bg-zinc-800 rounded"><X size={14}/></button>
+                      </div>
+                   ) : (
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => startEditHistory(inv)} className="text-zinc-500 hover:text-teal-400 p-1"><Edit2 size={14} /></button>
+                        <button onClick={() => deleteInvoice(inv.id)} className="text-zinc-600 hover:text-red-400 p-1"><Trash2 size={14} /></button>
+                      </div>
+                   )}
                  </div>
                </div>
             ))}

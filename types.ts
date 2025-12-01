@@ -49,7 +49,7 @@ export interface Invoice {
 export interface Cost {
   id: string;
   date: string;
-  category: 'Subcontractor' | 'GovFee' | 'Printing' | 'Travel' | 'Misc';
+  category: string; // Changed from union type to string to support custom categories
   description: string;
   amount: number;
 }
@@ -78,7 +78,7 @@ export interface GeneralTransaction {
   id: string;
   date: string;
   type: 'income' | 'expense';
-  category: 'OfficeRent' | 'Utilities' | 'Salary' | 'Software' | 'Marketing' | 'Tax' | 'Equipment' | 'Misc' | 'Capital';
+  category: string; // Changed from union type to string to support custom categories
   description: string;
   amount: number;
   note?: string;
@@ -104,10 +104,18 @@ export interface FirmInfo {
   email?: string;
 }
 
+export interface TransactionCategory {
+  id: string;
+  name: string;
+  type: 'income' | 'expense';
+  isSystem?: boolean; // If true, maybe warn before deleting (optional logic)
+}
+
 export interface AppSettings {
   firmInfo: FirmInfo;
   bankAccounts: BankAccount[];
   projectTypes: string[]; // List of available project types
+  transactionCategories: TransactionCategory[]; // New: Dynamic categories
 }
 
 export type ViewState = 'dashboard' | 'finance' | 'project-detail' | 'reports' | 'settings';

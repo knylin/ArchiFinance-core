@@ -138,6 +138,24 @@ export const defaultSettings: AppSettings = {
     '危老重建',
     '景觀設計',
     '變更使用'
+  ],
+  transactionCategories: [
+    // General - Expenses
+    { id: 'OfficeRent', name: '辦公室租金', type: 'expense', isSystem: true },
+    { id: 'Utilities', name: '水電網路', type: 'expense', isSystem: true },
+    { id: 'Salary', name: '薪資獎金', type: 'expense', isSystem: true },
+    { id: 'Software', name: '軟體訂閱', type: 'expense', isSystem: true },
+    { id: 'Marketing', name: '行銷廣告', type: 'expense', isSystem: true },
+    { id: 'Tax', name: '稅務/會計', type: 'expense', isSystem: true },
+    { id: 'Equipment', name: '設備採購', type: 'expense', isSystem: true },
+    { id: 'Misc', name: '雜支', type: 'expense', isSystem: true },
+    // General - Income
+    { id: 'Capital', name: '資本挹注', type: 'income', isSystem: true },
+    // Project Specific Expenses (Available in general too if needed)
+    { id: 'Subcontractor', name: '複委託/外包', type: 'expense', isSystem: true },
+    { id: 'GovFee', name: '規費', type: 'expense', isSystem: true },
+    { id: 'Printing', name: '圖說印製', type: 'expense', isSystem: true },
+    { id: 'Travel', name: '差旅費', type: 'expense', isSystem: true },
   ]
 };
 
@@ -157,6 +175,10 @@ export const loadSettings = (): AppSettings => {
       // Ensure projectTypes exists for migrated data
       if (!parsed.projectTypes) {
         parsed.projectTypes = defaultSettings.projectTypes;
+      }
+      // Ensure transactionCategories exists
+      if (!parsed.transactionCategories) {
+        parsed.transactionCategories = defaultSettings.transactionCategories;
       }
       return parsed;
     }

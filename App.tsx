@@ -364,6 +364,7 @@ const App: React.FC = () => {
           projects={projects}
           onUpdateGeneral={handleUpdateGeneralTransactions}
           onUpdateProject={handleUpdateProject}
+          settings={settings}
         />
       )}
 

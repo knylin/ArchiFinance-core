@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Project, Cost } from '../types';
-import { Plus, Trash2, DollarSign } from 'lucide-react';
+import { Plus, Trash2, DollarSign, Edit2, Check, X } from 'lucide-react';
 
 interface CostTrackerProps {
   project: Project;
@@ -14,6 +15,10 @@ export const CostTracker: React.FC<CostTrackerProps> = ({ project, onUpdate }) =
     amount: 0,
     description: ''
   });
+
+  // Edit State
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Cost | null>(null);
 
   const addCost = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,11 +41,41 @@ export const CostTracker: React.FC<CostTrackerProps> = ({ project, onUpdate }) =
   };
 
   const removeCost = (id: string) => {
+    if(confirm('確定要刪除此紀錄？')) {
+      onUpdate({
+        ...project,
+        costs: project.costs.filter(c => c.id !== id)
+      });
+    }
+  };
+
+  // Edit Handlers
+  const startEdit = (cost: Cost) => {
+    setEditingId(cost.id);
+    setEditData({ ...cost });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData(null);
+  };
+
+  const saveEdit = () => {
+    if (!editData) return;
+    
+    const updatedCosts = project.costs.map(c => 
+      c.id === editData.id ? editData : c
+    );
+
     onUpdate({
       ...project,
-      costs: project.costs.filter(c => c.id !== id)
+      costs: updatedCosts
     });
+
+    setEditingId(null);
+    setEditData(null);
   };
+
 
   const totalCost = project.costs.reduce((sum, c) => sum + c.amount, 0);
   // Calculate approximate revenue (simple sum of invoices for now)
@@ -80,7 +115,7 @@ export const CostTracker: React.FC<CostTrackerProps> = ({ project, onUpdate }) =
                 <input 
                   type="date" 
                   required
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-300"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-300 cursor-pointer"
                   value={newCost.date}
                   onChange={e => setNewCost({...newCost, date: e.target.value})}
                 />
@@ -88,7 +123,7 @@ export const CostTracker: React.FC<CostTrackerProps> = ({ project, onUpdate }) =
               <div>
                 <label className="block text-xs text-zinc-500 mb-1">類別</label>
                 <select 
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-300"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-300 cursor-pointer"
                   value={newCost.category}
                   onChange={e => setNewCost({...newCost, category: e.target.value as any})}
                 >
@@ -138,27 +173,75 @@ export const CostTracker: React.FC<CostTrackerProps> = ({ project, onUpdate }) =
                 <th className="px-6 py-3">類別</th>
                 <th className="px-6 py-3">說明</th>
                 <th className="px-6 py-3 text-right">金額</th>
-                <th className="px-6 py-3 w-10"></th>
+                <th className="px-6 py-3 w-20 text-right">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
               {project.costs.map(cost => (
-                <tr key={cost.id} className="hover:bg-zinc-800/30">
-                  <td className="px-6 py-3 text-zinc-400 font-mono text-xs">{cost.date}</td>
-                  <td className="px-6 py-3">
-                    <span className="px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-xs text-zinc-400">
-                      {cost.category === 'Subcontractor' ? '複委託' : 
-                       cost.category === 'GovFee' ? '規費' :
-                       cost.category === 'Printing' ? '印製' :
-                       cost.category === 'Travel' ? '差旅' : '雜支'}
-                    </span>
+                <tr key={cost.id} className="hover:bg-zinc-800/30 group">
+                  <td className="px-6 py-3 text-zinc-400 font-mono text-xs w-32">
+                     {editingId === cost.id && editData ? (
+                       <input 
+                         type="date"
+                         className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-white w-full"
+                         value={editData.date}
+                         onChange={(e) => setEditData({...editData, date: e.target.value})}
+                       />
+                     ) : cost.date}
                   </td>
-                  <td className="px-6 py-3 text-zinc-300">{cost.description}</td>
-                  <td className="px-6 py-3 text-right font-mono text-zinc-300">${cost.amount.toLocaleString()}</td>
+                  <td className="px-6 py-3 w-32">
+                    {editingId === cost.id && editData ? (
+                       <select 
+                         className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-white w-full"
+                         value={editData.category}
+                         onChange={(e) => setEditData({...editData, category: e.target.value as any})}
+                       >
+                         <option value="Subcontractor">複委託</option>
+                         <option value="GovFee">規費</option>
+                         <option value="Printing">印製</option>
+                         <option value="Travel">差旅</option>
+                         <option value="Misc">雜支</option>
+                       </select>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-xs text-zinc-400">
+                        {cost.category === 'Subcontractor' ? '複委託' : 
+                         cost.category === 'GovFee' ? '規費' :
+                         cost.category === 'Printing' ? '印製' :
+                         cost.category === 'Travel' ? '差旅' : '雜支'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-3 text-zinc-300">
+                     {editingId === cost.id && editData ? (
+                       <input 
+                         className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-white w-full"
+                         value={editData.description}
+                         onChange={(e) => setEditData({...editData, description: e.target.value})}
+                       />
+                     ) : cost.description}
+                  </td>
+                  <td className="px-6 py-3 text-right font-mono text-zinc-300 w-32">
+                     {editingId === cost.id && editData ? (
+                       <input 
+                         type="number"
+                         className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-white w-full text-right"
+                         value={editData.amount}
+                         onChange={(e) => setEditData({...editData, amount: parseFloat(e.target.value)})}
+                       />
+                     ) : `$${cost.amount.toLocaleString()}`}
+                  </td>
                   <td className="px-6 py-3 text-right">
-                    <button onClick={() => removeCost(cost.id)} className="text-zinc-600 hover:text-red-400">
-                      <Trash2 size={14} />
-                    </button>
+                     {editingId === cost.id ? (
+                       <div className="flex justify-end gap-2">
+                         <button onClick={saveEdit} className="text-teal-400 hover:text-teal-300 p-1 bg-teal-900/30 rounded"><Check size={14}/></button>
+                         <button onClick={cancelEdit} className="text-zinc-500 hover:text-zinc-300 p-1 bg-zinc-800 rounded"><X size={14}/></button>
+                       </div>
+                     ) : (
+                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button onClick={() => startEdit(cost)} className="text-zinc-500 hover:text-teal-400"><Edit2 size={14} /></button>
+                         <button onClick={() => removeCost(cost.id)} className="text-zinc-600 hover:text-red-400"><Trash2 size={14} /></button>
+                       </div>
+                     )}
                   </td>
                 </tr>
               ))}

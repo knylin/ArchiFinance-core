@@ -1,20 +1,22 @@
 
 import React, { useState, useMemo } from 'react';
-import { GeneralTransaction, Project, Cost } from '../types';
-import { Plus, Trash2, Wallet, Briefcase, Building2 } from 'lucide-react';
+import { GeneralTransaction, Project, Cost, AppSettings } from '../types';
+import { Plus, Trash2, Wallet, Briefcase, Building2, Edit2, Check, X, Calendar } from 'lucide-react';
 
 interface FinanceManagerProps {
   generalTransactions: GeneralTransaction[];
   projects: Project[];
   onUpdateGeneral: (transactions: GeneralTransaction[]) => void;
   onUpdateProject: (project: Project) => void;
+  settings: AppSettings;
 }
 
 export const FinanceManager: React.FC<FinanceManagerProps> = ({
   generalTransactions,
   projects,
   onUpdateGeneral,
-  onUpdateProject
+  onUpdateProject,
+  settings
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'general' | 'project'>('all');
   
@@ -36,6 +38,19 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     description: '',
     amount: 0
   });
+
+  // --- Inline Edit State ---
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<any>(null); // Holds temp data for the row being edited
+
+  // --- Helper: Get Category Name ---
+  const getCategoryName = (id: string, type?: 'income' | 'expense') => {
+    // Special case handling for legacy "Misc" income
+    if (id === 'Misc' && type === 'income') return '其他收入';
+    
+    const cat = settings.transactionCategories.find(c => c.id === id);
+    return cat ? cat.name : id; // Fallback to ID if not found
+  };
 
   // --- Calculations ---
   const stats = useMemo(() => {
@@ -63,7 +78,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       id: crypto.randomUUID(),
       date: generalForm.date!,
       type: generalForm.type as 'income' | 'expense',
-      category: generalForm.category as any,
+      category: generalForm.category as string,
       description: generalForm.description!,
       amount: Number(generalForm.amount),
       note: generalForm.note
@@ -87,7 +102,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     const newCost: Cost = {
       id: crypto.randomUUID(),
       date: projectCostForm.date!,
-      category: projectCostForm.category as any,
+      category: projectCostForm.category as string,
       description: projectCostForm.description!,
       amount: Number(projectCostForm.amount)
     };
@@ -116,6 +131,57 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         });
       }
     }
+  };
+
+  // --- Edit Handlers ---
+  const startEdit = (item: any) => {
+    setEditingId(item.id);
+    setEditData({ ...item });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData(null);
+  };
+
+  const saveEdit = () => {
+    if (!editData) return;
+
+    if (editData.kind === 'general') {
+      // Update General Transaction
+      const updatedList = generalTransactions.map(t => 
+        t.id === editData.id 
+          ? { 
+              ...t, 
+              date: editData.date, 
+              category: editData.category, 
+              description: editData.description, 
+              amount: Number(editData.amount),
+              type: editData.type // Allow changing income/expense type
+            } 
+          : t
+      );
+      onUpdateGeneral(updatedList);
+    } else {
+      // Update Project Cost
+      const project = projects.find(p => p.id === editData.project?.id);
+      if (project) {
+        const updatedCosts = project.costs.map(c => 
+          c.id === editData.id
+            ? {
+                ...c,
+                date: editData.date,
+                category: editData.category,
+                description: editData.description,
+                amount: Number(editData.amount)
+              }
+            : c
+        );
+        onUpdateProject({ ...project, costs: updatedCosts });
+      }
+    }
+    setEditingId(null);
+    setEditData(null);
   };
 
   // --- Unified List ---
@@ -174,7 +240,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
   return (
     <div className="flex h-full bg-zinc-950 text-white overflow-hidden">
       {/* Left Panel: Stats & Form */}
-      <div className="w-1/3 min-w-[360px] border-r border-zinc-800 flex flex-col overflow-y-auto">
+      <div className="w-1/3 min-w-[360px] border-r border-zinc-800 flex flex-col overflow-y-auto print:hidden">
         <div className="p-6 border-b border-zinc-800">
            <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Wallet /> 財務概況</h2>
            <div className="grid grid-cols-2 gap-3 mb-4">
@@ -213,43 +279,37 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             <form onSubmit={handleGeneralSubmit} className="space-y-4 animate-in fade-in">
               <div className="flex gap-2">
                 <select 
-                  className="w-1/3 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white"
+                  className="w-1/3 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white cursor-pointer"
                   value={generalForm.type}
                   onChange={e => setGeneralForm({...generalForm, type: e.target.value as any})}
                 >
                   <option value="expense">支出</option>
                   <option value="income">收入</option>
                 </select>
-                 <input 
-                  type="date"
-                  required
-                  className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white"
-                  value={generalForm.date}
-                  onChange={e => setGeneralForm({...generalForm, date: e.target.value})}
-                />
+                <div className="flex-1 relative">
+                  <input 
+                    type="date"
+                    required
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white cursor-pointer"
+                    value={generalForm.date}
+                    onChange={e => setGeneralForm({...generalForm, date: e.target.value})}
+                  />
+                  {/* Calendar icon hint, though browser provides one usually */}
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs text-zinc-500 mb-1">類別</label>
                 <select 
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white cursor-pointer"
                   value={generalForm.category}
-                  onChange={e => setGeneralForm({...generalForm, category: e.target.value as any})}
+                  onChange={e => setGeneralForm({...generalForm, category: e.target.value as string})}
                 >
-                  <optgroup label="支出">
-                    <option value="OfficeRent">辦公室租金</option>
-                    <option value="Utilities">水電網路</option>
-                    <option value="Salary">薪資獎金</option>
-                    <option value="Software">軟體訂閱</option>
-                    <option value="Marketing">行銷廣告</option>
-                    <option value="Tax">稅務/會計</option>
-                    <option value="Equipment">設備採購</option>
-                    <option value="Misc">雜支</option>
-                  </optgroup>
-                  <optgroup label="收入">
-                    <option value="Capital">資本挹注</option>
-                    <option value="Misc">其他收入</option>
-                  </optgroup>
+                   {settings.transactionCategories
+                      .filter(c => c.type === generalForm.type)
+                      .map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                   ))}
                 </select>
               </div>
 
@@ -287,7 +347,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
               <div>
                 <label className="block text-xs text-zinc-500 mb-1">選擇專案</label>
                 <select 
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white cursor-pointer"
                   value={selectedProjectId}
                   onChange={e => setSelectedProjectId(e.target.value)}
                   required
@@ -304,7 +364,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                  <input 
                   type="date"
                   required
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white cursor-pointer"
                   value={projectCostForm.date}
                   onChange={e => setProjectCostForm({...projectCostForm, date: e.target.value})}
                 />
@@ -313,15 +373,15 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
               <div>
                 <label className="block text-xs text-zinc-500 mb-1">類別</label>
                 <select 
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-white cursor-pointer"
                   value={projectCostForm.category}
-                  onChange={e => setProjectCostForm({...projectCostForm, category: e.target.value as any})}
+                  onChange={e => setProjectCostForm({...projectCostForm, category: e.target.value as string})}
                 >
-                  <option value="Subcontractor">複委託/外包</option>
-                  <option value="GovFee">規費</option>
-                  <option value="Printing">圖說印製</option>
-                  <option value="Travel">差旅費</option>
-                  <option value="Misc">雜支</option>
+                  {settings.transactionCategories
+                      .filter(c => c.type === 'expense') // Projects are always expenses
+                      .map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                   ))}
                 </select>
               </div>
 
@@ -360,10 +420,10 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
       {/* Right Panel: List */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="px-6 py-5 border-b border-zinc-800 bg-zinc-900/50 flex justify-between items-center sticky top-0 z-10">
+        <header className="px-6 py-5 border-b border-zinc-800 bg-zinc-900/50 flex justify-between items-center sticky top-0 z-10 backdrop-blur-sm">
           <div>
              <h1 className="text-xl font-bold">收支紀錄總表</h1>
-             <p className="text-zinc-400 text-sm">整合公司營運與各專案支出明細</p>
+             <p className="text-zinc-400 text-sm">可直接編輯列表修改紀錄</p>
           </div>
           <div className="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800">
             <button onClick={() => setActiveTab('all')} className={`px-3 py-1 text-sm rounded ${activeTab === 'all' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`}>全部</button>
@@ -376,73 +436,158 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
            <table className="w-full text-sm text-left">
              <thead className="bg-zinc-900 text-zinc-500 uppercase text-xs sticky top-0">
                <tr>
-                 <th className="px-4 py-3 rounded-l-lg">日期</th>
-                 <th className="px-4 py-3">類型</th>
+                 <th className="px-4 py-3 rounded-l-lg w-32">日期</th>
+                 <th className="px-4 py-3 w-28">類型/類別</th>
                  <th className="px-4 py-3">項目/專案</th>
                  <th className="px-4 py-3">說明</th>
-                 <th className="px-4 py-3 text-right">金額</th>
-                 <th className="px-4 py-3 rounded-r-lg w-10"></th>
+                 <th className="px-4 py-3 text-right w-28">金額</th>
+                 <th className="px-4 py-3 rounded-r-lg w-24 text-right">操作</th>
                </tr>
              </thead>
              <tbody className="divide-y divide-zinc-800">
                {unifiedList.map((item, idx) => (
                  <tr key={item.id + idx} className="hover:bg-zinc-900/50 group">
-                   <td className="px-4 py-3 font-mono text-zinc-400">{item.date}</td>
-                   <td className="px-4 py-3">
-                     {item.kind === 'general' ? (
-                       <span className={`px-2 py-0.5 rounded text-xs border ${
-                         item.type === 'income' 
-                           ? 'bg-emerald-900/20 border-emerald-900 text-emerald-400' 
-                           : 'bg-indigo-900/20 border-indigo-900 text-indigo-400'
-                       }`}>
-                         {item.type === 'income' ? '公司收入' : '公司支出'}
-                       </span>
+                   
+                   {/* Date Column */}
+                   <td className="px-4 py-3 font-mono text-zinc-400">
+                     {editingId === item.id ? (
+                       <input 
+                         type="date"
+                         className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-white w-full"
+                         value={editData.date}
+                         onChange={(e) => setEditData({...editData, date: e.target.value})}
+                       />
                      ) : (
-                       <span className="px-2 py-0.5 rounded text-xs bg-teal-900/20 border border-teal-900 text-teal-400">
-                         專案支出
-                       </span>
+                       item.date
                      )}
                    </td>
+
+                   {/* Type/Category Column */}
+                   <td className="px-4 py-3">
+                     {editingId === item.id && item.kind === 'general' ? (
+                       <select
+                         className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-white w-full"
+                         value={editData.category}
+                         onChange={(e) => setEditData({...editData, category: e.target.value})}
+                       >
+                           {settings.transactionCategories
+                              .filter(c => c.type === editData.type)
+                              .map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                           ))}
+                       </select>
+                     ) : editingId === item.id && item.kind === 'project' ? (
+                       <select
+                         className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-white w-full"
+                         value={editData.category}
+                         onChange={(e) => setEditData({...editData, category: e.target.value})}
+                       >
+                         {settings.transactionCategories
+                              .filter(c => c.type === 'expense')
+                              .map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                         ))}
+                       </select>
+                     ) : (
+                       // Display Mode
+                       item.kind === 'general' ? (
+                         <span className={`px-2 py-0.5 rounded text-xs border ${
+                           item.type === 'income' 
+                             ? 'bg-emerald-900/20 border-emerald-900 text-emerald-400' 
+                             : 'bg-indigo-900/20 border-indigo-900 text-indigo-400'
+                         }`}>
+                           {item.type === 'income' ? '公司收入' : '公司支出'}
+                         </span>
+                       ) : (
+                         <span className="px-2 py-0.5 rounded text-xs bg-teal-900/20 border border-teal-900 text-teal-400">
+                           專案支出
+                         </span>
+                       )
+                     )}
+                   </td>
+
+                   {/* Project/Category Text Column */}
                    <td className="px-4 py-3 text-zinc-300">
                      {item.kind === 'general' ? (
                        <div className="flex items-center gap-2">
                          <Building2 size={14} className="text-zinc-500"/>
-                         {item.category === 'OfficeRent' ? '辦公室租金' :
-                          item.category === 'Utilities' ? '水電網路' :
-                          item.category === 'Salary' ? '薪資獎金' :
-                          item.category === 'Software' ? '軟體訂閱' :
-                          item.category === 'Marketing' ? '行銷廣告' :
-                          item.category === 'Tax' ? '稅務/會計' :
-                          item.category === 'Equipment' ? '設備採購' :
-                          item.category === 'Capital' ? '資本挹注' : '雜項'}
+                         {getCategoryName(item.category, item.type)}
                        </div>
                      ) : (
                         <div className="flex items-center gap-2" title={item.project?.name}>
                          <Briefcase size={14} className="text-zinc-500"/>
                          <span className="truncate max-w-[120px]">{item.project?.name}</span>
                          <span className="text-zinc-500 text-xs">
-                            ({item.category === 'Subcontractor' ? '複委託' : 
-                             item.category === 'GovFee' ? '規費' : '其他'})
+                            ({getCategoryName(item.category, 'expense')})
                          </span>
                        </div>
                      )}
                    </td>
-                   <td className="px-4 py-3 text-zinc-400">{item.description}</td>
+
+                   {/* Description Column */}
+                   <td className="px-4 py-3 text-zinc-400">
+                      {editingId === item.id ? (
+                       <input 
+                         type="text"
+                         className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-white w-full"
+                         value={editData.description}
+                         onChange={(e) => setEditData({...editData, description: e.target.value})}
+                       />
+                     ) : (
+                       item.description
+                     )}
+                   </td>
+
+                   {/* Amount Column */}
                    <td className={`px-4 py-3 text-right font-mono font-medium ${
                      item.type === 'income' ? 'text-emerald-400' : 'text-zinc-300'
                    }`}>
-                     {item.type === 'expense' && '-'}${item.amount.toLocaleString()}
+                      {editingId === item.id ? (
+                       <input 
+                         type="number"
+                         className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-white w-full text-right"
+                         value={editData.amount}
+                         onChange={(e) => setEditData({...editData, amount: parseFloat(e.target.value)})}
+                       />
+                     ) : (
+                       <>
+                         {item.type === 'expense' && '-'}${item.amount.toLocaleString()}
+                       </>
+                     )}
                    </td>
+
+                   {/* Actions Column */}
                    <td className="px-4 py-3 text-right">
-                     <button 
-                       onClick={() => item.kind === 'general' 
-                         ? deleteGeneralTx(item.id) 
-                         : item.project && deleteProjectCost(item.project.id, item.id)
-                       }
-                       className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                     >
-                       <Trash2 size={14} />
-                     </button>
+                     {editingId === item.id ? (
+                       <div className="flex justify-end gap-2">
+                         <button onClick={saveEdit} className="text-teal-400 hover:text-teal-300 p-1 bg-teal-900/30 rounded">
+                           <Check size={14} />
+                         </button>
+                         <button onClick={cancelEdit} className="text-zinc-500 hover:text-zinc-300 p-1 bg-zinc-800 rounded">
+                           <X size={14} />
+                         </button>
+                       </div>
+                     ) : (
+                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button 
+                           onClick={() => startEdit(item)}
+                           className="text-zinc-500 hover:text-teal-400"
+                           title="編輯"
+                         >
+                           <Edit2 size={14} />
+                         </button>
+                         <button 
+                           onClick={() => item.kind === 'general' 
+                             ? deleteGeneralTx(item.id) 
+                             : item.project && deleteProjectCost(item.project.id, item.id)
+                           }
+                           className="text-zinc-500 hover:text-red-400"
+                           title="刪除"
+                         >
+                           <Trash2 size={14} />
+                         </button>
+                       </div>
+                     )}
                    </td>
                  </tr>
                ))}

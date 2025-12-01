@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { AppSettings, BankAccount, Project } from '../types';
-import { Save, Plus, Trash2, Building2, CreditCard, Tag, DownloadCloud, AlertTriangle } from 'lucide-react';
+import { AppSettings, BankAccount, Project, TransactionCategory } from '../types';
+import { Save, Plus, Trash2, Building2, CreditCard, Tag, DownloadCloud, AlertTriangle, Wallet } from 'lucide-react';
 import { fetchProjectsFromServer } from '../services/storage';
 
 interface SettingsProps {
@@ -11,10 +11,14 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ settings, onSave, onSyncServer }) => {
-  const [activeTab, setActiveTab] = useState<'firm' | 'bank' | 'types' | 'sync'>('firm');
+  const [activeTab, setActiveTab] = useState<'firm' | 'bank' | 'types' | 'categories' | 'sync'>('firm');
   const [newType, setNewType] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   
+  // New Category State
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryType, setNewCategoryType] = useState<'income' | 'expense'>('expense');
+
   // Local state for editing
   const [formData, setFormData] = useState<AppSettings>(settings);
 
@@ -83,6 +87,32 @@ export const Settings: React.FC<SettingsProps> = ({ settings, onSave, onSyncServ
       ...prev,
       projectTypes: prev.projectTypes.filter(t => t !== type)
     }));
+  };
+
+  const addTransactionCategory = () => {
+    if (!newCategoryName.trim()) return;
+    
+    const newCat: TransactionCategory = {
+      id: crypto.randomUUID(),
+      name: newCategoryName.trim(),
+      type: newCategoryType,
+      isSystem: false
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      transactionCategories: [...prev.transactionCategories, newCat]
+    }));
+    setNewCategoryName('');
+  };
+
+  const removeTransactionCategory = (id: string) => {
+    if (confirm('確定要刪除此收支類別嗎？')) {
+      setFormData(prev => ({
+        ...prev,
+        transactionCategories: prev.transactionCategories.filter(c => c.id !== id)
+      }));
+    }
   };
 
   const handleSave = () => {
@@ -156,7 +186,17 @@ export const Settings: React.FC<SettingsProps> = ({ settings, onSave, onSyncServ
                   : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
-              <Tag size={18} /> 案件類型管理
+              <Tag size={18} /> 案件類型
+            </button>
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`px-6 py-3 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 shrink-0 ${
+                activeTab === 'categories'
+                  ? 'bg-zinc-900 text-teal-400 border-t border-x border-zinc-800 relative -bottom-[1px]'
+                  : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              <Wallet size={18} /> 收支類別
             </button>
              <button
               onClick={() => setActiveTab('sync')}
@@ -341,6 +381,78 @@ export const Settings: React.FC<SettingsProps> = ({ settings, onSave, onSyncServ
                       </button>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Transaction Categories Tab */}
+          {activeTab === 'categories' && (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-b-xl rounded-tr-xl p-6 animate-in fade-in">
+              <div className="space-y-6">
+                <div className="flex gap-2 items-center bg-zinc-950 border border-zinc-800 p-2 rounded-lg">
+                   <select 
+                     className="bg-zinc-900 text-white border border-zinc-700 rounded px-3 py-2 text-sm focus:outline-none"
+                     value={newCategoryType}
+                     onChange={(e) => setNewCategoryType(e.target.value as any)}
+                   >
+                     <option value="expense">支出類別</option>
+                     <option value="income">收入類別</option>
+                   </select>
+                   <input
+                    className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white focus:border-teal-500 focus:outline-none text-sm"
+                    value={newCategoryName}
+                    onChange={e => setNewCategoryName(e.target.value)}
+                    placeholder="輸入新類別名稱 (例如：交際費)"
+                    onKeyDown={e => e.key === 'Enter' && addTransactionCategory()}
+                  />
+                  <button 
+                    onClick={addTransactionCategory}
+                    disabled={!newCategoryName.trim()}
+                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded font-medium disabled:opacity-50 text-sm"
+                  >
+                    新增
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">支出類別 (Expense)</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {formData.transactionCategories.filter(c => c.type === 'expense').map(cat => (
+                        <div key={cat.id} className="flex items-center justify-between p-3 bg-zinc-950 border border-zinc-800 rounded group hover:border-zinc-700 transition-colors">
+                          <span className="text-zinc-300">{cat.name}</span>
+                          {!cat.isSystem && (
+                            <button 
+                              onClick={() => removeTransactionCategory(cat.id)}
+                              className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">收入類別 (Income)</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {formData.transactionCategories.filter(c => c.type === 'income').map(cat => (
+                        <div key={cat.id} className="flex items-center justify-between p-3 bg-zinc-950 border border-zinc-800 rounded group hover:border-zinc-700 transition-colors">
+                          <span className="text-zinc-300">{cat.name}</span>
+                           {!cat.isSystem && (
+                            <button 
+                              onClick={() => removeTransactionCategory(cat.id)}
+                              className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
